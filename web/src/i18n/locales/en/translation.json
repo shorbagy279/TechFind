@@ -1,0 +1,14 @@
+{
+  "title": "Technician Directory",
+  "search": "Search",
+  "governorate": "Governorate",
+  "city": "City",
+  "field": "Field",
+  "login": "Login",
+  "register": "Register",
+  "logout": "Logout",
+  "admin": "Admin",
+  "user": "User",
+  "no_results": "No technicians found",
+  "pay": "Pay"
+}

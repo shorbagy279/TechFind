@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -29,12 +30,9 @@ import {
   Select,
   MenuItem,
   Chip,
-  Avatar,
-  Tabs,
-  Tab,
-  Divider
+  Avatar
 } from '@mui/material';
-import { Add, Edit, Delete, Visibility, Build, LocationOn, Category } from '@mui/icons-material';
+import { Add, Edit, Delete, Visibility, Build, LocationOn } from '@mui/icons-material';
 import client from '../../api/client';
 
 interface Technician {
@@ -46,7 +44,7 @@ interface Technician {
     id: number;
     governorate: string;
     city: string;
-  };
+  } | null;
   fields: Array<{ id: number; name: string }>;
   averageRating: number;
   totalReviews: number;
@@ -59,7 +57,6 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   
-  const [currentTab, setCurrentTab] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTech, setEditingTech] = useState<Technician | null>(null);
   const [formData, setFormData] = useState({
@@ -75,14 +72,16 @@ export default function AdminDashboard() {
   });
   const [error, setError] = useState('');
 
+  // NOTE: endpoints updated to match backend 'RegionController' and 'TechnicianController'
   const { data: regions } = useQuery({
     queryKey: ['regions'],
-    queryFn: async () => (await client.get('/public/regions')).data
+    queryFn: async () => (await client.get('/regions')).data
   });
 
   const { data: fields } = useQuery({
     queryKey: ['fields'],
-    queryFn: async () => (await client.get('/public/fields')).data
+    // backend exposes technician fields at /api/public/technician-fields
+    queryFn: async () => (await client.get('/public/technician-fields')).data
   });
 
   const { data: technicians, isLoading } = useQuery({
@@ -117,7 +116,6 @@ export default function AdminDashboard() {
   });
 
   const handleOpenDialog = (tech?: Technician) => {
-    // Check if regions and fields exist
     if (!regions || regions.length === 0) {
       alert(i18n.language === 'ar' 
         ? 'يرجى إضافة مناطق أولاً من قائمة المناطق'
@@ -169,7 +167,9 @@ export default function AdminDashboard() {
   };
 
   const handleChange = (field: string) => (e: any) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    // For multi-select, value will be an array
+    const value = e?.target?.value;
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = () => {
@@ -210,13 +210,12 @@ export default function AdminDashboard() {
     }
   };
 
-  // Quick Stats Component
   const QuickStats = () => (
     <Grid container spacing={3} sx={{ mb: 4 }}>
       <Grid item xs={12} sm={6} md={3}>
         <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
           <CardContent>
-            <Typography variant="h4">{technicians?.length || 0}</Typography>
+            <Typography variant="h4">{(technicians || []).length || 0}</Typography>
             <Typography variant="body2">
               {i18n.language === 'ar' ? 'إجمالي الفنيين' : 'Total Technicians'}
             </Typography>
@@ -226,7 +225,7 @@ export default function AdminDashboard() {
       <Grid item xs={12} sm={6} md={3}>
         <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
           <CardContent>
-            <Typography variant="h4">{regions?.length || 0}</Typography>
+            <Typography variant="h4">{(regions || []).length || 0}</Typography>
             <Typography variant="body2">
               {i18n.language === 'ar' ? 'المناطق' : 'Regions'}
             </Typography>
@@ -236,7 +235,7 @@ export default function AdminDashboard() {
       <Grid item xs={12} sm={6} md={3}>
         <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
           <CardContent>
-            <Typography variant="h4">{fields?.length || 0}</Typography>
+            <Typography variant="h4">{(fields || []).length || 0}</Typography>
             <Typography variant="body2">
               {i18n.language === 'ar' ? 'المجالات' : 'Fields'}
             </Typography>
@@ -246,9 +245,7 @@ export default function AdminDashboard() {
       <Grid item xs={12} sm={6} md={3}>
         <Card sx={{ bgcolor: 'info.main', color: 'white' }}>
           <CardContent>
-            <Typography variant="h4">
-              {technicians?.filter((t: Technician) => t.active)?.length || 0}
-            </Typography>
+            <Typography variant="h4">{(technicians || []).filter((t: Technician) => t.active).length || 0}</Typography>
             <Typography variant="body2">
               {i18n.language === 'ar' ? 'نشط' : 'Active'}
             </Typography>
@@ -268,7 +265,6 @@ export default function AdminDashboard() {
 
   return (
     <Box>
-      {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
           {i18n.language === 'ar' ? 'لوحة التحكم الإدارية' : 'Admin Dashboard'}
@@ -280,10 +276,8 @@ export default function AdminDashboard() {
         </Typography>
       </Box>
 
-      {/* Quick Stats */}
       <QuickStats />
 
-      {/* Quick Actions */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
@@ -327,7 +321,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Warning if no regions or fields */}
       {(!regions || regions.length === 0 || !fields || fields.length === 0) && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           <Typography variant="body2" gutterBottom>
@@ -368,7 +361,6 @@ export default function AdminDashboard() {
         </Alert>
       )}
 
-      {/* Technicians Table */}
       <Card>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -426,7 +418,7 @@ export default function AdminDashboard() {
                     <TableRow key={tech.id}>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar>{tech.fullName.charAt(0)}</Avatar>
+                          <Avatar>{tech.fullName?.charAt(0) ?? ''}</Avatar>
                           <Box>
                             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                               {tech.fullName}
@@ -438,7 +430,7 @@ export default function AdminDashboard() {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {tech.region?.governorate}, {tech.region?.city}
+                        {tech.region ? `${tech.region.governorate}, ${tech.region.city}` : '—'}
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
@@ -453,7 +445,7 @@ export default function AdminDashboard() {
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Typography variant="body2">
-                            {tech.averageRating?.toFixed(1) || '0.0'}
+                            {(tech.averageRating ?? 0).toFixed(1)}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             ({tech.totalReviews || 0})
@@ -500,7 +492,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
           {editingTech
@@ -544,7 +535,7 @@ export default function AdminDashboard() {
                   label={i18n.language === 'ar' ? 'المنطقة *' : 'Region *'}
                 >
                   {(regions || []).map((region: any) => (
-                    <MenuItem key={region.id} value={region.id}>
+                    <MenuItem key={region.id} value={region.id.toString()}>
                       {region.governorate} - {region.city}
                     </MenuItem>
                   ))}
@@ -627,9 +618,9 @@ export default function AdminDashboard() {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={createMutation.isPending}
+            disabled={createMutation.isLoading}
           >
-            {createMutation.isPending ? (
+            {createMutation.isLoading ? (
               <CircularProgress size={20} />
             ) : editingTech ? (
               i18n.language === 'ar' ? 'تحديث' : 'Update'

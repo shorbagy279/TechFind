@@ -5,6 +5,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class FieldController {
     
     private final FieldRepository fieldRepository;
@@ -13,7 +14,7 @@ public class FieldController {
         this.fieldRepository = fieldRepository;
     }
     
-    @GetMapping("/public/fields")
+    @GetMapping("/public/technician-fields")
     public List<Field> getAllFields() {
         return fieldRepository.findAll();
     }

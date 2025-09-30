@@ -18,7 +18,6 @@
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/config/JwtAuthFilter.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/technician/FieldRepository.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/technician/Technician.java
-/home/obaid/TechFind/server/src/main/java/com/example/techdirectory/config/CorsConfig.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/user/User.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/technician/Field.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/user/Role.java

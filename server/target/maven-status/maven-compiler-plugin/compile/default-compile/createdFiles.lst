@@ -17,7 +17,6 @@ com/example/techdirectory/user/User.class
 com/example/techdirectory/technician/CreateTechnicianRequest.class
 com/example/techdirectory/auth/JwtService.class
 com/example/techdirectory/technician/Technician.class
-com/example/techdirectory/config/CorsConfig.class
 com/example/techdirectory/payment/PaymentController.class
 com/example/techdirectory/user/User$UserBuilder.class
 com/example/techdirectory/payment/dto/PaymentRequest.class
@@ -34,10 +33,10 @@ com/example/techdirectory/user/Role.class
 com/example/techdirectory/technician/Review$ReviewBuilder.class
 com/example/techdirectory/technician/TechnicianController$TechnicianProfile.class
 com/example/techdirectory/payment/service/BookingService.class
-com/example/techdirectory/config/CorsConfig$1.class
 com/example/techdirectory/technician/TechnicianController$TechnicianWithDistance.class
 com/example/techdirectory/technician/TechnicianRepository.class
 com/example/techdirectory/technician/TechnicianController$ContactRequest.class
+com/example/techdirectory/technician/TechnicianController$ErrorResponse.class
 com/example/techdirectory/technician/RegionRepository.class
 com/example/techdirectory/technician/FieldController$FieldRequest.class
 com/example/techdirectory/technician/FieldController.class

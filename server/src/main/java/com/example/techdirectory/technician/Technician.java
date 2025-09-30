@@ -1,5 +1,6 @@
 package com.example.techdirectory.technician;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -7,9 +8,16 @@ import java.time.LocalTime;
 import java.util.Set;
 import java.util.List;
 
-@Entity @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Entity 
+@Getter 
+@Setter 
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Technician {
-    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) 
+    @Id 
+    @GeneratedValue(strategy=GenerationType.IDENTITY) 
     private Long id;
     
     // Basic Information
@@ -24,7 +32,8 @@ public class Technician {
     private String description;
     
     // Location Information
-    @ManyToOne 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JsonIgnoreProperties({"technicians"})
     private Region region;
     
     private Double lat;
@@ -32,21 +41,26 @@ public class Technician {
     private String address;
     
     // Professional Information
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name="technician_fields",
         joinColumns=@JoinColumn(name="technician_id"),
         inverseJoinColumns=@JoinColumn(name="field_id"))
+    @JsonIgnoreProperties({"technicians"})
     private Set<Field> fields;
     
     private Integer experienceYears;
     private String certification;
     
     // Availability
-    private Boolean active;
-    private Boolean available;
+    @Builder.Default
+    private Boolean active = true;
+    
+    @Builder.Default
+    private Boolean available = true;
     
     @Enumerated(EnumType.STRING)
-    private AvailabilityStatus availabilityStatus; // AVAILABLE, BUSY, OFFLINE
+    @Builder.Default
+    private AvailabilityStatus availabilityStatus = AvailabilityStatus.AVAILABLE;
     
     // Working Hours
     private LocalTime workingHoursStart;
@@ -74,12 +88,17 @@ public class Technician {
     private String currency;
     
     @Enumerated(EnumType.STRING)
-    private PriceType priceType; // FIXED, HOURLY, NEGOTIABLE
+    private PriceType priceType;
     
     // Contact Preferences
-    private Boolean allowDirectCalls;
-    private Boolean allowWhatsApp;
-    private Boolean allowInAppMessages;
+    @Builder.Default
+    private Boolean allowDirectCalls = false;
+    
+    @Builder.Default
+    private Boolean allowWhatsApp = false;
+    
+    @Builder.Default
+    private Boolean allowInAppMessages = false;
     
     private String whatsappNumber;
     
@@ -95,7 +114,9 @@ public class Technician {
     private String verificationDocumentUrl;
     
     // Emergency Contact
-    private Boolean isEmergencyService;
+    @Builder.Default
+    private Boolean isEmergencyService = false;
+    
     private Double emergencyFeeMultiplier;
     
     public enum AvailabilityStatus {
@@ -116,7 +137,7 @@ public class Technician {
             return Double.MAX_VALUE;
         }
         
-        final int R = 6371; // Radius of the earth in km
+        final int R = 6371;
         
         double latDistance = Math.toRadians(userLat - lat);
         double lonDistance = Math.toRadians(userLng - lng);
@@ -124,19 +145,18 @@ public class Technician {
                 + Math.cos(Math.toRadians(lat)) * Math.cos(Math.toRadians(userLat))
                 * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; // Distance in km
+        return R * c;
     }
     
-    // Check if technician is currently available based on working hours
     public boolean isCurrentlyAvailable() {
-        if (!active || !available || availabilityStatus != AvailabilityStatus.AVAILABLE) {
+        if (active == null || !active || available == null || !available || 
+            availabilityStatus != AvailabilityStatus.AVAILABLE) {
             return false;
         }
         
         LocalTime now = LocalTime.now();
         java.time.DayOfWeek currentDay = java.time.LocalDate.now().getDayOfWeek();
         
-        // Convert Java DayOfWeek to our enum
         DayOfWeek today = DayOfWeek.valueOf(currentDay.name());
         
         return workingDays != null && workingDays.contains(today) &&

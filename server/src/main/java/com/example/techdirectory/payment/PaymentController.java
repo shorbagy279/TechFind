@@ -1,9 +1,9 @@
 package com.example.techdirectory.payment;
+
 import com.example.techdirectory.payment.dto.PaymentRequest;
 import com.example.techdirectory.payment.dto.PaymentResult;
 import com.example.techdirectory.payment.model.Booking;
 import com.example.techdirectory.payment.service.BookingService;
-import com.stripe.exception.SignatureVerificationException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments")
-@CrossOrigin
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -26,7 +26,6 @@ public class PaymentController {
     @PostMapping("/create-session")
     public ResponseEntity<Map<String, String>> createPaymentSession(@RequestBody PaymentRequest request) {
         try {
-            // create booking record first
             Booking booking = bookingService.createBooking(request);
             request.setBookingId(booking.getId());
 
@@ -45,7 +44,10 @@ public class PaymentController {
             response.put("status", "created");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            throw new RuntimeException("Payment session creation failed: " + e.getMessage(), e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -53,7 +55,7 @@ public class PaymentController {
     public ResponseEntity<Map<String, String>> handleStripeWebhook(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-
+        
         PaymentResult result = paymentService.processWebhook(payload, sigHeader);
         Map<String, String> response = new HashMap<>();
         response.put("status", result.isSuccess() ? "success" : "failed");
@@ -65,7 +67,7 @@ public class PaymentController {
     public ResponseEntity<Map<String, String>> handlePayMobWebhook(@RequestBody Map<String, Object> payload) {
         try {
             String transactionId = String.valueOf(payload.get("id"));
-            String status = String.valueOf(payload.get("pending")); // adapt mapping
+            String status = String.valueOf(payload.get("pending"));
             bookingService.updatePaymentStatus(transactionId, status);
             return ResponseEntity.ok(Map.of("status", "success"));
         } catch (Exception e) {
@@ -75,7 +77,6 @@ public class PaymentController {
 
     @GetMapping("/success")
     public ResponseEntity<String> paymentSuccess(@RequestParam("session_id") String sessionId) {
-        // Redirect page handling usually done in frontend; here return a simple message or redirect
         return ResponseEntity.ok("Payment success, session: " + sessionId);
     }
 

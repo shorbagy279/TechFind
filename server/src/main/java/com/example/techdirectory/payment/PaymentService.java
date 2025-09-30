@@ -1,4 +1,4 @@
-package main.java.com.example.techdirectory.payment;
+package com.example.techdirectory.payment;
 
 import com.example.techdirectory.payment.dto.PaymentRequest;
 import com.example.techdirectory.payment.dto.PaymentResult;

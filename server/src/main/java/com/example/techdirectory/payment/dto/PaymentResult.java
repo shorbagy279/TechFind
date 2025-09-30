@@ -1,3 +1,4 @@
+package com.example.techdirectory.payment.dto;
 
 
 public class PaymentResult {

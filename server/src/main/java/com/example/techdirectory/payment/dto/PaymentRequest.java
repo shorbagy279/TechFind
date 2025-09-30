@@ -1,4 +1,4 @@
-
+package com.example.techdirectory.payment.dto;
 
 public class PaymentRequest {
     private Long bookingId;

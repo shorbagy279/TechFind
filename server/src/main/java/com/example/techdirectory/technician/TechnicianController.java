@@ -150,8 +150,8 @@ public class TechnicianController {
         return response;
     }
 
-    @GetMapping("/public/fields") 
-    public List<Field> fields() { 
+    @GetMapping("/api/public/technician-fields")  // Changed from /api/public/fields
+    public List<Field> fields() {
         return fieldRepo.findAll(); 
     }
     

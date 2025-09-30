@@ -1,4 +1,4 @@
-package main.java.com.example.techdirectory.payment.model;
+package com.example.techdirectory.payment.model;
 
 import java.time.LocalDateTime;
 

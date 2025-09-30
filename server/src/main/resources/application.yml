@@ -22,10 +22,27 @@ jwt:
   expirationMinutes: 120
 
 cors:
-  allowed-origins: http://localhost:5173
+  allowed-origins: http://localhost:3000,http://localhost:5173
+
+# Stripe Configuration
+stripe:
+  secret:
+    key: ${STRIPE_SECRET_KEY:sk_test_your_stripe_secret_key}
+  publishable:
+    key: ${STRIPE_PUBLISHABLE_KEY:pk_test_your_stripe_publishable_key}
+
+# Application Base URL
+app:
+  base:
+    url: ${APP_BASE_URL:http://localhost:5173}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.example.techdirectory: DEBUG

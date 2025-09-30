@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -29,9 +29,12 @@ import {
   Select,
   MenuItem,
   Chip,
-  Avatar
+  Avatar,
+  Tabs,
+  Tab,
+  Divider
 } from '@mui/material';
-import { Add, Edit, Delete, Visibility, Build } from '@mui/icons-material';
+import { Add, Edit, Delete, Visibility, Build, LocationOn, Category } from '@mui/icons-material';
 import client from '../../api/client';
 
 interface Technician {
@@ -40,6 +43,7 @@ interface Technician {
   phone: string;
   email: string;
   region: {
+    id: number;
     governorate: string;
     city: string;
   };
@@ -50,10 +54,12 @@ interface Technician {
   availabilityStatus: string;
 }
 
-export default function TechnicianList() {
+export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   
+  const [currentTab, setCurrentTab] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTech, setEditingTech] = useState<Technician | null>(null);
   const [formData, setFormData] = useState({
@@ -111,6 +117,20 @@ export default function TechnicianList() {
   });
 
   const handleOpenDialog = (tech?: Technician) => {
+    // Check if regions and fields exist
+    if (!regions || regions.length === 0) {
+      alert(i18n.language === 'ar' 
+        ? 'يرجى إضافة مناطق أولاً من قائمة المناطق'
+        : 'Please add regions first from the Regions tab');
+      return;
+    }
+    if (!fields || fields.length === 0) {
+      alert(i18n.language === 'ar'
+        ? 'يرجى إضافة مجالات أولاً من قائمة المجالات'
+        : 'Please add fields first from the Fields tab');
+      return;
+    }
+
     if (tech) {
       setEditingTech(tech);
       setFormData({
@@ -118,8 +138,8 @@ export default function TechnicianList() {
         phone: tech.phone,
         email: tech.email,
         summary: '',
-        regionId: '',
-        fieldIds: tech.fields.map(f => f.id),
+        regionId: tech.region?.id?.toString() || '',
+        fieldIds: tech.fields?.map(f => f.id) || [],
         experienceYears: '',
         baseServiceFee: '',
         currency: 'EGP'
@@ -157,6 +177,14 @@ export default function TechnicianList() {
       setError(i18n.language === 'ar' ? 'الاسم مطلوب' : 'Name is required');
       return;
     }
+    if (!formData.regionId) {
+      setError(i18n.language === 'ar' ? 'المنطقة مطلوبة' : 'Region is required');
+      return;
+    }
+    if (formData.fieldIds.length === 0) {
+      setError(i18n.language === 'ar' ? 'يجب اختيار مجال واحد على الأقل' : 'At least one field is required');
+      return;
+    }
 
     const submitData = {
       fullName: formData.fullName,
@@ -182,6 +210,54 @@ export default function TechnicianList() {
     }
   };
 
+  // Quick Stats Component
+  const QuickStats = () => (
+    <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          <CardContent>
+            <Typography variant="h4">{technicians?.length || 0}</Typography>
+            <Typography variant="body2">
+              {i18n.language === 'ar' ? 'إجمالي الفنيين' : 'Total Technicians'}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
+          <CardContent>
+            <Typography variant="h4">{regions?.length || 0}</Typography>
+            <Typography variant="body2">
+              {i18n.language === 'ar' ? 'المناطق' : 'Regions'}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
+          <CardContent>
+            <Typography variant="h4">{fields?.length || 0}</Typography>
+            <Typography variant="body2">
+              {i18n.language === 'ar' ? 'المجالات' : 'Fields'}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ bgcolor: 'info.main', color: 'white' }}>
+          <CardContent>
+            <Typography variant="h4">
+              {technicians?.filter((t: Technician) => t.active)?.length || 0}
+            </Typography>
+            <Typography variant="body2">
+              {i18n.language === 'ar' ? 'نشط' : 'Active'}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -192,12 +268,112 @@ export default function TechnicianList() {
 
   return (
     <Box>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+          {i18n.language === 'ar' ? 'لوحة التحكم الإدارية' : 'Admin Dashboard'}
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          {i18n.language === 'ar' 
+            ? 'إدارة الفنيين والمناطق والمجالات'
+            : 'Manage technicians, regions, and fields'}
+        </Typography>
+      </Box>
+
+      {/* Quick Stats */}
+      <QuickStats />
+
+      {/* Quick Actions */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            {i18n.language === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<Build />}
+                onClick={() => navigate('/admin/fields')}
+                size="large"
+              >
+                {i18n.language === 'ar' ? 'إدارة المجالات' : 'Manage Fields'}
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<LocationOn />}
+                onClick={() => navigate('/admin/regions')}
+                size="large"
+              >
+                {i18n.language === 'ar' ? 'إدارة المناطق' : 'Manage Regions'}
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => handleOpenDialog()}
+                size="large"
+              >
+                {i18n.language === 'ar' ? 'إضافة فني جديد' : 'Add New Technician'}
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Warning if no regions or fields */}
+      {(!regions || regions.length === 0 || !fields || fields.length === 0) && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          <Typography variant="body2" gutterBottom>
+            <strong>
+              {i18n.language === 'ar' 
+                ? '⚠️ إعداد مطلوب!' 
+                : '⚠️ Setup Required!'}
+            </strong>
+          </Typography>
+          {(!regions || regions.length === 0) && (
+            <Typography variant="body2">
+              • {i18n.language === 'ar' 
+                ? 'لا توجد مناطق. الرجاء إضافة مناطق أولاً.'
+                : 'No regions found. Please add regions first.'}
+              <Button 
+                size="small" 
+                onClick={() => navigate('/admin/regions')}
+                sx={{ ml: 1 }}
+              >
+                {i18n.language === 'ar' ? 'إضافة مناطق' : 'Add Regions'}
+              </Button>
+            </Typography>
+          )}
+          {(!fields || fields.length === 0) && (
+            <Typography variant="body2">
+              • {i18n.language === 'ar'
+                ? 'لا توجد مجالات. الرجاء إضافة مجالات أولاً.'
+                : 'No fields found. Please add fields first.'}
+              <Button 
+                size="small" 
+                onClick={() => navigate('/admin/fields')}
+                sx={{ ml: 1 }}
+              >
+                {i18n.language === 'ar' ? 'إضافة مجالات' : 'Add Fields'}
+              </Button>
+            </Typography>
+          )}
+        </Alert>
+      )}
+
+      {/* Technicians Table */}
       <Card>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Build />
-              {i18n.language === 'ar' ? 'إدارة الفنيين' : 'Manage Technicians'}
+            <Typography variant="h6">
+              {i18n.language === 'ar' ? 'قائمة الفنيين' : 'Technicians List'}
             </Typography>
             <Button
               variant="contained"
@@ -230,9 +406,19 @@ export default function TechnicianList() {
                 {(technicians || []).length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center">
-                      <Typography color="text.secondary">
-                        {i18n.language === 'ar' ? 'لا يوجد فنيين' : 'No technicians yet'}
-                      </Typography>
+                      <Box sx={{ py: 4 }}>
+                        <Typography color="text.secondary" gutterBottom>
+                          {i18n.language === 'ar' ? 'لا يوجد فنيين' : 'No technicians yet'}
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          startIcon={<Add />}
+                          onClick={() => handleOpenDialog()}
+                          sx={{ mt: 2 }}
+                        >
+                          {i18n.language === 'ar' ? 'إضافة أول فني' : 'Add First Technician'}
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -323,16 +509,16 @@ export default function TechnicianList() {
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label={i18n.language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                label={i18n.language === 'ar' ? 'الاسم الكامل *' : 'Full Name *'}
                 value={formData.fullName}
                 onChange={handleChange('fullName')}
                 required
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label={i18n.language === 'ar' ? 'الهاتف' : 'Phone'}
@@ -340,7 +526,7 @@ export default function TechnicianList() {
                 onChange={handleChange('phone')}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label={i18n.language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
@@ -349,13 +535,13 @@ export default function TechnicianList() {
                 onChange={handleChange('email')}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel>{i18n.language === 'ar' ? 'المنطقة' : 'Region'}</InputLabel>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>{i18n.language === 'ar' ? 'المنطقة *' : 'Region *'}</InputLabel>
                 <Select
                   value={formData.regionId}
                   onChange={handleChange('regionId')}
-                  label={i18n.language === 'ar' ? 'المنطقة' : 'Region'}
+                  label={i18n.language === 'ar' ? 'المنطقة *' : 'Region *'}
                 >
                   {(regions || []).map((region: any) => (
                     <MenuItem key={region.id} value={region.id}>
@@ -365,14 +551,14 @@ export default function TechnicianList() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12 }}>
-              <FormControl fullWidth>
-                <InputLabel>{i18n.language === 'ar' ? 'المجالات' : 'Fields'}</InputLabel>
+            <Grid item xs={12}>
+              <FormControl fullWidth required>
+                <InputLabel>{i18n.language === 'ar' ? 'المجالات *' : 'Fields *'}</InputLabel>
                 <Select
                   multiple
                   value={formData.fieldIds}
                   onChange={handleChange('fieldIds')}
-                  label={i18n.language === 'ar' ? 'المجالات' : 'Fields'}
+                  label={i18n.language === 'ar' ? 'المجالات *' : 'Fields *'}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {(selected as number[]).map((value) => {
@@ -390,7 +576,7 @@ export default function TechnicianList() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12 }}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 label={i18n.language === 'ar' ? 'الملخص' : 'Summary'}
@@ -400,7 +586,7 @@ export default function TechnicianList() {
                 rows={2}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label={i18n.language === 'ar' ? 'سنوات الخبرة' : 'Experience Years'}
@@ -409,7 +595,7 @@ export default function TechnicianList() {
                 onChange={handleChange('experienceYears')}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label={i18n.language === 'ar' ? 'سعر الخدمة' : 'Service Fee'}
@@ -418,7 +604,7 @@ export default function TechnicianList() {
                 onChange={handleChange('baseServiceFee')}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid item xs={12} sm={4}>
               <FormControl fullWidth>
                 <InputLabel>{i18n.language === 'ar' ? 'العملة' : 'Currency'}</InputLabel>
                 <Select

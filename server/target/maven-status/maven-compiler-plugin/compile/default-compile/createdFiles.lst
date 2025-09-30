@@ -1,5 +1,7 @@
 com/example/techdirectory/technician/Technician$PriceType.class
+com/example/techdirectory/technician/RegionController.class
 com/example/techdirectory/technician/ReviewRepository.class
+com/example/techdirectory/technician/RegionController$RegionRequest.class
 com/example/techdirectory/payment/model/Booking.class
 com/example/techdirectory/technician/Technician$AvailabilityStatus.class
 com/example/techdirectory/technician/TechnicianController$ContactResponse.class

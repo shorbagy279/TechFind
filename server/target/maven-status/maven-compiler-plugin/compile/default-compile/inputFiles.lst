@@ -5,6 +5,7 @@
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/technician/ReviewRepository.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/auth/AuthController.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/payment/PaymentController.java
+/home/obaid/TechFind/server/src/main/java/com/example/techdirectory/technician/RegionController.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/payment/dto/PaymentRequest.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/payment/service/BookingService.java
 /home/obaid/TechFind/server/src/main/java/com/example/techdirectory/auth/JwtService.java

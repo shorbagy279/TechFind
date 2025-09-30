@@ -1,9 +1,9 @@
-package com.example.techdirectory.config; // <-- replace with your package
+package com.example.techdirectory.config;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
@@ -13,10 +13,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -31,10 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final UserDetailsService userDetailsService;
 
-    @Value("${security.jwt.base64-secret:}")
-    private String base64Secret;
-
-    @Value("${security.jwt.secret:}")
+    @Value("${jwt.secret}")
     private String secret;
 
     private Key key;
@@ -46,26 +45,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @PostConstruct
     public void init() {
         try {
-            byte[] keyBytes = null;
-            if (base64Secret != null && !base64Secret.isBlank()) {
-                keyBytes = Decoders.BASE64.decode(base64Secret);
-            } else if (secret != null && !secret.isBlank()) {
-                keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-                // optional warning for short secret, but do not throw
-                if (keyBytes.length < 32) {
-                    logger.warn("security.jwt.secret is shorter than recommended (32+ bytes). Use base64-secret for production.");
-                }
-            } else {
-                // Do not throw — allow app to start; treat key==null as "no JWT configured".
-                logger.warn("No JWT secret configured (security.jwt.base64-secret or security.jwt.secret). JWT validation will be disabled.");
-                key = null;
-                return;
+            if (secret == null || secret.isBlank()) {
+                throw new IllegalStateException("JWT secret is not configured");
             }
+            
+            byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+            
+            if (keyBytes.length < 32) {
+                logger.warn("JWT secret is shorter than recommended (32+ bytes). Consider using a stronger secret.");
+            }
+            
             this.key = Keys.hmacShaKeyFor(keyBytes);
+            logger.info("JWT signing key initialized successfully");
         } catch (Exception ex) {
-            // Fail safe: log and leave key=null so server still starts.
             logger.error("Failed to initialize JWT signing key: {}", ex.getMessage(), ex);
-            key = null;
+            throw new IllegalStateException("JWT initialization failed", ex);
         }
     }
 
@@ -73,31 +67,40 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
+        
         if ("OPTIONS".equalsIgnoreCase(method)) {
             return true;
         }
-        return path.startsWith("/api/public/") || path.startsWith("/api/auth/");
+        
+        return path.startsWith("/api/public/") 
+            || path.startsWith("/api/auth/")
+            || path.equals("/api/regions")
+            || path.startsWith("/api/payments/webhook/")
+            || path.equals("/api/payments/success")
+            || path.equals("/api/payments/cancel")
+            || path.startsWith("/actuator/");
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
-
-        // If key is null => JWT support disabled; continue without authentication
-        if (key == null) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
+        
         if (header == null || !header.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = header.substring(7);
+        String token = header.substring(7).trim();
+        
+        if (token.isEmpty()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(key)
@@ -106,16 +109,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     .getBody();
 
             String username = claims.getSubject();
+            
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                try {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    
+                    UsernamePasswordAuthenticationToken authToken = 
+                        new UsernamePasswordAuthenticationToken(
+                            userDetails, 
+                            null, 
+                            userDetails.getAuthorities()
+                        );
+                    
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    
+                    logger.debug("Successfully authenticated user: {}", username);
+                } catch (Exception e) {
+                    logger.error("Failed to load user details for: {}", username, e);
+                }
             }
+        } catch (ExpiredJwtException ex) {
+            logger.debug("Expired JWT token for {}: {}", request.getServletPath(), ex.getMessage());
+            response.setHeader("X-Token-Expired", "true");
         } catch (JwtException ex) {
-            logger.debug("Invalid JWT for {} : {}", request.getServletPath(), ex.getMessage());
+            logger.debug("Invalid JWT token for {}: {}", request.getServletPath(), ex.getMessage());
         } catch (Exception ex) {
-            logger.warn("JWT processing error for {} : {}", request.getServletPath(), ex.getMessage());
+            logger.warn("JWT processing error for {}: {}", request.getServletPath(), ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
